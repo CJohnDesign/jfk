@@ -14,6 +14,38 @@ interface NARADocument {
   pdfUrl: string;
 }
 
+interface FirecrawlResponse {
+  url: string;
+  title?: string;
+  text?: string;
+  metadata?: {
+    author?: string;
+    creationDate?: string;
+    modificationDate?: string;
+    producer?: string;
+    pageCount?: number;
+  };
+  error?: string;
+}
+
+interface DocumentMetadata {
+  recordNumber: string;
+  url: string;
+  processedAt: string;
+  content?: {
+    title?: string;
+    text?: string;
+  };
+  pdfMetadata?: {
+    author?: string;
+    creationDate?: string;
+    modificationDate?: string;
+    producer?: string;
+    pageCount?: number;
+  };
+  error?: string;
+}
+
 class NARAJFKScraper {
   private baseUrl = 'https://www.archives.gov';
   private releasePath = '/files/research/jfk/releases/2025/0318/';
@@ -88,7 +120,7 @@ class NARAJFKScraper {
     }
   }
 
-  private async processPDFWithFirecrawl(pdfUrl: string): Promise<any> {
+  private async processPDFWithFirecrawl(pdfUrl: string): Promise<FirecrawlResponse> {
     try {
       const response = await fetch(this.firecrawlUrl, {
         method: 'POST',
@@ -116,7 +148,7 @@ class NARAJFKScraper {
     }
   }
 
-  private async saveMetadata(recordNumber: string, metadata: any): Promise<void> {
+  private async saveMetadata(recordNumber: string, metadata: DocumentMetadata): Promise<void> {
     const metadataPath = path.join(this.outputDir, 'metadata', `${recordNumber}.json`);
     await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
   }
@@ -146,11 +178,14 @@ class NARAJFKScraper {
       // Save metadata
       await this.saveMetadata(doc.recordNumber, {
         recordNumber: doc.recordNumber,
-        releaseDate: doc.releaseDate,
-        sourceUrl: doc.pdfUrl,
-        downloadedAt: new Date().toISOString(),
-        status: 'processed',
-        processedAt: new Date().toISOString()
+        url: doc.pdfUrl,
+        processedAt: new Date().toISOString(),
+        content: {
+          title: processedContent.title,
+          text: processedContent.text
+        },
+        pdfMetadata: processedContent.metadata,
+        error: processedContent.error
       });
 
     } catch (error) {
